@@ -60,6 +60,10 @@ class NeuralNetwork:
 
 
     def calc_activation(self, inp):
+        """
+        Calculate a output for an input.
+        Save calculated activation values for each layer in List a.
+        """
         inp_rightform = ny.matrix( inp ).T
         self.a = [inp_rightform]
         tmp = ny.dot( self.weights_layer[0], inp_rightform ) + self.bias[0]
@@ -80,6 +84,9 @@ class NeuralNetwork:
         #eventuell muss shape von tmp angepasst werden
 
     def activate(self, inp):
+        """
+        Calculate output for an input.
+        """
         inp_rightform = ny.matrix( inp ).T
         tmp = ny.dot( self.weights_layer[0], inp_rightform ) + self.bias[0]
         tmp = self.activation_function(tmp)
@@ -92,12 +99,23 @@ class NeuralNetwork:
         return tmp
 
     def train(self, alpha=0.5):
+        """
+        Does backpropagation on every single Dataset.
+        """
         for i in range(self.data_amount):
             self.backprop(self.inputs[i],self.targets[i],alpha)
 
-    # For one specific input and target
-    def backprop(self, inp, target, alpha):
 
+    def backprop(self, inp, target, alpha):
+        """
+        Backpropagation for one specific input and target.
+        First calculate activation values for each layer, then calculate the deltas backwards.
+        In the end calculate the error and correct the weights and biases.
+
+        alpha = learning_rate
+        """
+
+        # set derivative function
         if self.activation_type==1:
             derivative = lambda a: 1-ny.square(a)
         else:
@@ -105,7 +123,10 @@ class NeuralNetwork:
 
         self.calc_activation(inp)
 
+        # correct target's format
         target_rightform = ny.matrix( target ).T
+
+        # calculate deltas
         tmp = self.a[-1] - target_rightform
 
         tmp = ny.multiply(tmp, derivative(self.a[-1]))
@@ -118,6 +139,7 @@ class NeuralNetwork:
 
             self.delta.append(tmp)
 
+        # correct weights and biases with the deltas
         for i in range(len(self.weights_layer)):
             self.weights_layer[i] -= alpha*(ny.dot(self.delta[-1-i], self.a[i].T))
 
@@ -125,9 +147,12 @@ class NeuralNetwork:
             self.bias[i] -= alpha * self.delta[-1-i]
 
 
-    # alpha = learning rate, lambda = weight_decay
     def full_batch_backprop(self, alpha, lamb):
+        """
+        Backpropagation with batch_size = data_amount
 
+        alpha = learning rate, lambda = weight_decay
+        """
         if self.activation_type==1:
             derivative = lambda a: 1-ny.square(a)
         else:
@@ -175,7 +200,11 @@ class NeuralNetwork:
 
 
     def batch_backprop(self, alpha, lamb, batch_size):
+        """
+        Batch-Backpropagation with flexible batch_size
 
+        alpha = learning rate, lambda = weight_decay
+        """
         # init derivated function
         if self.activation_type==1:
             derivative = lambda a: 1-ny.square(a)
@@ -226,6 +255,10 @@ class NeuralNetwork:
 
 
     def test_acc(self, part=0.1):
+        '''
+        Test the networks accurracy on its own dataset.
+        Not the whole dataset but the part of the dataset.
+        '''
         nr = self.data_amount*part
         err = 0
         for i in range(int(round(nr))):
@@ -234,8 +267,13 @@ class NeuralNetwork:
 
     
     def save(self, filename = "savedNetwork.obj", with_data=False):
+        '''
+        Save the network in filename with pickle.
+        TODO
+        '''
         fobj = open(filename, 'w')
         pickle.dump(self,fobj)
+
         '''
         fobj.write("in ")
         fobj.write(str(self.nodes_in)+"\n")
@@ -267,9 +305,15 @@ class NeuralNetwork:
             '''
 
 def openNN(filename = "savedNetwork.obj", with_data=False):
+    '''
+    Open the network from filename with pickle.
+    '''
     fobj = open(filename, 'r')
     return pickle.load(fobj)
 
+
+
+##############################################################################
 
 '''
 

@@ -1,7 +1,9 @@
 import NN
 import numpy as np
 
-
+'''
+Takes a string representation of a connect-4 situation from the database and reshapes it.
+'''
 def StrToBoard(string):
     ret = [[],[],[],[],[],[]]
     for i in range(7):
@@ -10,10 +12,16 @@ def StrToBoard(string):
             ret[j].append(" " if string[z]=="b" else string[z])
     return [ret, string[42]]
 
+'''
+Shows the string representation of a connect-4 situation from the database.
+'''
 def displayStr(string):
     display_board(StrToBoard(string)[0])
 
 
+'''
+Make string representation of a connect-4 situation from the database usable for the neural network.
+'''
 def list4NN(string):
 	# unlisted
 	# A= [[1,2],[3,4]] -> A= [1,2,3,4]
@@ -26,6 +34,9 @@ def list4NN(string):
     target = 0 if string[42]=="b" else (-1 if string[42]=="o" else 1)
     return [ret, target]
 
+'''
+Make a game situation usable for the neural network.
+'''
 def board2NN(board):
     tmp = np.array(board)
     tmp = tmp.T
@@ -34,6 +45,9 @@ def board2NN(board):
     tmp = [1 if x=="O" else (-1 if x=="X" else 0) for x in tmp]
     return tmp
 
+'''
+Convert neural network data to game situation.
+'''
 def NN2board(li):
     tmp = ["X" if x==1 else ("O" if x==-1 else " ") for x in li]
     tmp = np.array(tmp)

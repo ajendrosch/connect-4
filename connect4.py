@@ -1,8 +1,17 @@
-﻿import random
-import NN2
+﻿'''
+uncomment modules if needed
+'''
+#import random
+#import NN4Connect4
 
-KI_level = 2
+'''
+Alpha-Beta depth
+'''
+KI_level = 6
 
+'''
+This heuristic assigns each field the number of possible connections with itself and size 4.
+'''
 evaluationTable = [[3, 4, 5, 7, 5, 4, 3], 
                   [ 4, 6, 8, 10, 8, 6, 4],
                   [ 5, 8, 11, 13, 11, 8, 5], 
@@ -10,15 +19,68 @@ evaluationTable = [[3, 4, 5, 7, 5, 4, 3],
                   [ 4, 6, 8, 10, 8, 6, 4],
                   [ 3, 4, 5, 7, 5, 4, 3]]
 
-def evaluateContent(board, player1):
+
+'''
+Main game to play against KI
+change code to choose which KI
+'''
+def main():
+
+    free_cells = 42
+    users_turn = True
+    count = 1
+    #ttt_board = [ [ " ", " ", " ", " ", " ", " "," ", " "], [ " ", " ", " ", " ", " "," ", " ", " "], [ " ", " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " ", " "] ]
+    ttt_board = [ [ " ", " ", " ", " ", " ", " "," "], [ " ", " ", " ", " "," ", " ", " "], [ " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " "] ]
+
+    choice = raw_input("Would you like to go first? (y or n): ")
+
+    if (choice == 'y' or choice=='Y'):
+        users_turn = True
+
+
+    elif (choice == 'n' or choice =='N') :
+        users_turn = False        
+
+    else:
+        print 'invalid input'
+
+    while not winner(ttt_board) and (free_cells > 0):
+        display_board(ttt_board)
+        if users_turn:
+            make_user_move(ttt_board)
+            users_turn = not users_turn
+        else:
+            make_ab_move(ttt_board)
+            #make_nn_move(ttt_board)
+            users_turn = not users_turn
+        free_cells -= 1
+
+    display_board(ttt_board)
+    if (winner(ttt_board) == 'X'):
+        print "You Won!"
+
+    elif (winner(ttt_board) == 'O'):
+        print "The Computer Won!"
+        print "\nGAME OVER"
+    else:
+        print "Stalemate!"
+        print "\nGAME OVER \n"
+
+
+'''
+Static evaluation for old Alpha-Beta algorithm.
+'''
+def evaluate(board, player1="O"):
         player2 = "X" if player1=="O" else "O"
         utility = 138
+        # check first if connections with size 4 exist
         if check(board, player1, 4) > 0:
             if check(board, player2, 4) > 0:
                 return 0
             return 2*utility
         if check(board, player2, 4) > 0:
             return -2*utility
+        # if not, use heuristic
         sum = 0
         for i in [0,1,2,3,4,5]:
             for j in [0,1,2,3,4,5,6]:
@@ -30,15 +92,18 @@ def evaluateContent(board, player1):
         return sum
         #return utility + sum
 
+'''
+Started as MiniMax but is an Alpha-Beta search variant now.
+Old version but mostly defeats the new implemented Alpha-Beta Negamax Algorithm probably because of the evaluation.
+'''
 def minimax(board, depth, player, maximizingPlayer=True, alpha=-9999, beta=9999):
+    # get all possible steps
     steps = poss_steps(board)
+    # evaluate if endstate reached
     if depth==0 or steps==[]:
-        # IST DAS SO RICHTIG??? ICH MEIN WARUM MUSS ICH DEN PLAYER BEI DER EVALUATION BERÜCKSICHTIGEN
         wert = evaluate(board, player)
-        #print "Kind: "+str(wert)
         return [wert,-1]
     if maximizingPlayer:
-        #bestValue = -999999
         maxValue = alpha
         bestStep = -1
         next_player = "O" if player=="X" else "X"
@@ -84,6 +149,53 @@ def minimax(board, depth, player, maximizingPlayer=True, alpha=-9999, beta=9999)
         return [minValue, bestStep]
 
 
+'''
+New implemented Alpha-Beta-Negamax algorithm.
+'''
+def ab_negamax(board, player, depth, alpha=-9999, beta=9999):
+    bestStep = -1
+    # get all possible steps
+    steps = poss_steps(board)
+    # evaluate if endstate reached
+    if depth==0 or steps==[] or winner(board)!="":
+        wert = evaluate2(board, player)
+        return [wert,-1]
+
+    maxValue = alpha
+    next_player = "O" if player=="X" else "X"
+    bestStep = steps[0]
+    for step in steps:
+        insert(board, step, player)
+        #print (beta, maxValue, depth)
+        Value = -(ab_negamax(board, next_player, depth-1, -beta, -maxValue)[0])
+        uninsert(board, step, player)
+        if (Value > maxValue):
+            maxValue = Value
+            bestStep = step
+            if (maxValue >= beta):
+                break
+    return [maxValue, bestStep]
+
+'''
+Evaluation function for new Alpha-Beta implementation.
+'''
+def evaluate2(board, player1):
+        player2 = "X" if player1=="O" else "O"
+        if check(board, player1, 4) > 0:
+            return 9999
+        if check(board, player2, 4) > 0:
+            return -9999
+        # if not, use heuristic
+        sum = 0
+        for i in [0,1,2,3,4,5]:
+            for j in [0,1,2,3,4,5,6]:
+                if (board[i][j] == player1):
+                    sum += evaluationTable[i][j]
+        return sum
+
+'''
+Returns a list with free rows.
+'''
 def poss_steps(board):
     ret = []
     for i in range(len(board[1])):
@@ -91,20 +203,9 @@ def poss_steps(board):
             ret.append(i)
     return map(lambda x:x+1, ret)
 
-def evaluate(board, player1):
-    #player2 = "X" if player1=="O" else "O"
-    # WÄHLE FESTEN PLAYER BEI EVALUATION
-    return evaluateContent(board, "O")
-    #return (bewertesp(board, player2)-bewertesp(board, player1))
-
-def bewertesp(feld, sp):
-    vier = check(feld, sp, 4)
-    drei = check(feld, sp, 3)
-    zwei = check(feld, sp, 2)
-    eins = check(feld, sp, 1)
-    #gewichtung = gewichte(feld, sp)
-    return (1000*vier+100*drei+10*zwei+eins)
-
+'''
+Checks for player sp how many connections of size anz he has.
+'''
 def check(feld, sp, anz):
     breite = len(feld[0])
     hoehe = len(feld)
@@ -141,23 +242,6 @@ def check(feld, sp, anz):
                 if(feld[i-t][j+t]==sp): tmp = tmp+1
             if tmp == anz: ret = ret + 1
 
-    # for i in range(anz-1, hoehe):
-    #     for j in range(0,hoehe):
-    #         try:
-    #             if feld[i-k][k]==sp:
-    #                 tmp = tmp +1
-    #             else:
-    #                 tmp=0
-    #             if tmp>=anz:
-    #                 ret = ret + 1
-    #         except:
-    #             tmp=0
-    #             pass
-            
-    # for i in range(breite):
-    #     for j in range(hoehe):
-    #         pass
-
     #schräg links
     for i in range(hoehe-1,sub-1,-1):
         for j in range(breite-1,sub-1,-1):
@@ -169,39 +253,16 @@ def check(feld, sp, anz):
     return ret
 
 
-
-class MinMaxBaum:
-
-    def __init__(self, feld, tiefe, vater, typ="min"):
-        self.Vater = vater
-        self.Tiefe = tiefe
-        self.Situation = feld
-        self.Children = {}
-        self.Typ = typ
-        self.Wert = 0
-
-    def build(self):
-        if(self.Tiefe > 0 and self.Situation != []):
-            print "Tiefe:" + str(self.Tiefe)
-            symbol="O" if self.Typ=="min" else "X"
-            typ= "max" if self.Typ=="min" else "min"
-            for i in map(lambda x:x+1, range(7)):
-                tree = MinMaxBaum(insert2(self.Situation, i, symbol), self.Tiefe-1, self, typ)
-                tree.build()
-                self.Children[i]=tree
-
-    def bewerte(self):
-        if(self.Situation)!=[]:
-            Wert_X = bewertesp(self.Situation, "X")
-            Wert_O = bewertesp(self.Situation, "O")
-            for i in self.Children:
-                self.Children[i].bewerte()
-
-
+'''
+Duplicates a field
+'''
 def dupl(feld):
     feld2 = [[feld[i][j] for j in range(7)] for i in range(6)]
     return feld2
 
+'''
+Returns a winner (if there is one) for a given game.
+'''
 def winner(board):
     if check(board, "X",4)>0:
         return "X"
@@ -210,7 +271,9 @@ def winner(board):
     return ""
 
 
-
+'''
+displays the Game
+'''
 def display_board(board):
 
     print "   1   2   3   4    5   6   7"
@@ -228,6 +291,9 @@ def display_board(board):
     print
 
 
+'''
+Undo a move.
+'''
 def uninsert(board, col, symbol):
     for row in [1,2,3,4,5,6]:
         if (board[row-1][col-1] == symbol):
@@ -235,6 +301,9 @@ def uninsert(board, col, symbol):
             break
 
 
+'''
+Do a move.
+'''
 def insert(board, col, symbol):
     
     valid_move = False
@@ -248,6 +317,9 @@ def insert(board, col, symbol):
         print "Sorry, invalid input. Please try again!\n"
     return False
 
+'''
+Insert and return a copy of the Game.
+'''
 def insert2(board, col, symbol):
     board_copy = dupl(board)
     if(insert(board_copy,col,symbol)):
@@ -255,6 +327,9 @@ def insert2(board, col, symbol):
     return [] 
 
 
+'''
+Gets unser input and makes a move.
+'''
 def make_user_move(board):
 
     # sorge fuer guten Input
@@ -270,25 +345,36 @@ def make_user_move(board):
     while not valid_move:
         valid_move = insert(board, col, "X")
 
+'''
+Makes Neural Network make a move.
+The neural network rates every possible move and choses the highest.
+'''
 def make_nn_move(board, sym = "O"):
 
     valid_move = False
     while not valid_move:
             
         steps = poss_steps(board)
-        li = [NN2.nn.activate(NN2.board2NN(insert2(board,step,sym))) for step in steps]
+        li = [NN4Connect4.nn.activate(NN4Connect4.board2NN(insert2(board,step,sym))) for step in steps]
         col = steps[li.index(max(li))]
 
         valid_move = insert(board, col, sym)
 
-def make_ab_move(board, sym = "O"):
+'''
+Makes the newer and shorter Alpha-Beta-Negamax Algorithm move.
+'''
+def make_ab_move(board, sym = "O", level=KI_level):
     
     # alpha-beta Algorithm
     valid_move = False
     while not valid_move:
-        col = minimax(board, KI_level, sym)[1]
+        col = ab_negamax(board, sym, level)[1]
+        #col = minimax(board, KI_level, sym)[1]
         valid_move = insert(board, col, sym)
 
+'''
+Makes a random move.
+'''
 def make_random_move(board, sym = "X"):
     # Random KI
     steps = poss_steps(board)
@@ -297,76 +383,20 @@ def make_random_move(board, sym = "X"):
         nr = random.randint(0, len(steps)-1)
         valid_move = insert(board, steps[nr], sym)
 
-def main():
-
-    free_cells = 42
-    users_turn = True
-    count = 1
-    #ttt_board = [ [ " ", " ", " ", " ", " ", " "," ", " "], [ " ", " ", " ", " ", " "," ", " ", " "], [ " ", " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " ", " "] ]
-    ttt_board = [ [ " ", " ", " ", " ", " ", " "," "], [ " ", " ", " ", " "," ", " ", " "], [ " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " "] ]
-    
-##    print "\nHALL OF FAME \n"
-##
-##    try:
-##        hall_of_fame = open("HallOfFame.txt", 'r')
-##
-##        for name in hall_of_fame:
-##            print str(count) + ".", name
-##            print
-##            count += 1
-##
-##        hall_of_fame.close()
-##
-##    except IOError:
-##        print "No Human Has Ever Beat Me.. mwah-ha-ha-ha!\n" 
-
-    choice = raw_input("Would you like to go first? (y or n): ")
-
-    if (choice == 'y' or choice=='Y'):
-        users_turn = True
+'''
+Makes the old Alpha-Beta-Negamax Algorithm move.
+'''
+def make_ab_old_move(board, sym = "O", level=KI_level):
+    # alpha-beta Algorithm
+    valid_move = False
+    while not valid_move:
+        col = minimax(board, level, sym)[1]
+        valid_move = insert(board, col, sym)
 
 
-    elif (choice == 'n' or choice =='N') :
-        users_turn = False        
-
-    else:
-        print 'invalid input'
-
-    while not winner(ttt_board) and (free_cells > 0):
-        display_board(ttt_board)
-        if users_turn:
-            make_user_move(ttt_board)
-            users_turn = not users_turn
-        else:
-            #make_ab_move(ttt_board)
-            make_nn_move(ttt_board)
-            users_turn = not users_turn
-        free_cells -= 1
-
-    display_board(ttt_board)
-    if (winner(ttt_board) == 'X'):
-        print "You Won!"
-
-        # print "Your name will now be added to the Hall of Fame!"
-
-        # hall_of_fame = open("HallOfFame.txt", 'a')
-        # name = raw_input("Enter your name: ")
-        # hall_of_fame.write(name+ '\n')
-        # print "Your name has been added to the Hall of Fame!"
-
-        # hall_of_fame.close()
-
-        # print "\nGAME OVER"
-    elif (winner(ttt_board) == 'O'):
-        print "The Computer Won!"
-        print "\nGAME OVER"
-    else:
-        print "Stalemate!"
-        print "\nGAME OVER \n"
-
-
-
-
+'''
+Neural network vs random.
+'''
 def randomVsNN(times=100):
     nnwon = 0
     randwon = 0
@@ -398,7 +428,9 @@ def randomVsNN(times=100):
     print "NN, Random, Stalemate"
     return (nnwon,randwon,stalemate)
 
-# AB level1 : unentschieden, level 2: NN gewinnt, level 3: AB gewinnt
+'''
+Neural network vs old alpha-beta.
+'''
 def NNVsAB(times=100):
     nnwon = 0
     abwon = 0
@@ -436,6 +468,9 @@ def NNVsAB(times=100):
     return (nnwon,abwon,stalemate)
 
 
+'''
+random vs old alpha-beta
+'''
 def randomVsAB(times=100):
     abwon = 0
     randwon = 0
@@ -468,9 +503,50 @@ def randomVsAB(times=100):
     return (abwon,randwon,stalemate)
 
 
+'''
+old vs new alpha-beta.
+'''
+def AB1VsAB2():
+    aboldwon = 0
+    abwon = 0
+    stalemate = 0
+    for i in range(14):
+        level=i/2+1
+        print i
+        free_cells = 42
+        ttt_board = [ [ " ", " ", " ", " ", " ", " "," "], [ " ", " ", " ", " "," ", " ", " "], [ " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " "], [ " ", " ", " ", " ", " ", " ", " "] ]
+
+        #change beginner 50/50
+        oldStart = True if (i%2==0) else False
+        
+        while not winner(ttt_board) and (free_cells > 0):
+            if oldStart:
+                make_ab_old_move(ttt_board, sym="O", level=level)
+                oldStart = not oldStart
+            else:
+                make_ab_move(ttt_board, sym="X", level=level)
+                oldStart = not oldStart
+            free_cells -= 1
+
+        if (winner(ttt_board) == 'O'):
+            #print "NN won"
+            aboldwon += 1
+            print "old"
+            
+        elif (winner(ttt_board) == 'X'):
+            #print "AB won"
+            abwon += 1
+            print "new"
+        else:
+            stalemate += 1
+            print "stalemate"
+            
+    print "AB_old, AB, Stalemate"
+    return (aboldwon,abwon,stalemate)
+
 ###################################################################################
 #start the game
-#main()
+main()
 
 #sit1 = [[' ', ' ', ' ', 'X', ' ', ' ', ' '], [' ', ' ', ' ', 'O', ' ', ' ', ' '], ['O', 'X', ' ', 'X', 'X', ' ', ' '], ['X', 'O', ' ', 'O', 'O', ' ', ' '], ['O', 'X', ' ', 'X', 'O', ' ', ' '], ['X', 'O', 'O', 'O', 'X', ' ', ' ']]
 #sit2 = [[' ', ' ', ' ', ' ', ' ', ' ', ' '], [' ', ' ', ' ', ' ', ' ', ' ', ' '], [' ', ' ', ' ', ' ', ' ', ' ', ' '], [' ', ' ', ' ', ' ', ' ', ' ', ' '], [' ', ' ', ' ', 'X', 'X', 'X', ' '], [' ', ' ', ' ', 'O', 'O', 'O', ' ']]
